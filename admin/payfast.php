@@ -4,11 +4,11 @@
  * payfast.php
  *
  * Admin module for querying payments (and associated orders) made using the
- * PayFast payment module.
+ * Payfast payment module.
  *
- * Copyright (c) 2023 PayFast (Pty) Ltd
- * You (being anyone who is not PayFast (Pty) Ltd) may download and use this plugin / code in your own website in
- * conjunction with a registered and active PayFast account. If your PayFast account is terminated for any reason,
+ * Copyright (c) 2024 Payfast (Pty) Ltd
+ * You (being anyone who is not Payfast (Pty) Ltd) may download and use this plugin / code in your own website in
+ * conjunction with a registered and active Payfast account. If your Payfast account is terminated for any reason,
  * you may not use this plugin / code or part thereof.
  * Except as expressly indicated in this licence, you may not use, copy, modify or distribute this plugin / code or
  * part thereof in any way.
@@ -17,8 +17,8 @@
 
 // Max results to show per page
 // phpcs:disable
-define('MAX_DISPLAY_SEARCH_RESULTS_PAYFAST', 10);
-define('FILENAME_PAYFAST', 'payfast.php');
+const MAX_DISPLAY_SEARCH_RESULTS_PAYFAST = 10;
+const FILENAME_PAYFAST = 'payfast.php';
 // phpcs:enable
 const PAGE_LITERAL       = 'page=';
 const ORDER_ID_LITERAL   = '&pf_order_id=';
@@ -29,7 +29,7 @@ const TD_END_HTML        = '</td>';
 
 // Include ZenCart header
 // phpcs:disable PSR1.Files.SideEffects.FoundWithSymbols
-require('includes/application_top.php');
+require_once 'includes/application_top.php';
 
 // Create sort order array
 $payfastSortOrderArray = array(
@@ -43,37 +43,22 @@ $payfastSortOrderArray = array(
 
 // Set sort order
 $selectedSortOrder =
-    isset($_GET['pf_sort_order']) ? $_GET['pf_sort_order'] : 0;
+    $_GET['pf_sort_order'] ?? 0;
 
 // Create 'order by' statement based on sort order
-switch ($selectedSortOrder) {
-    case 0:
-        $sqlOrderBy = " ORDER BY p.`id` DESC";
-        break;
-    case 1:
-        $sqlOrderBy = " ORDER BY p.`id`";
-        break;
-    case 2:
-        $sqlOrderBy = " ORDER BY p.`zc_order_id` DESC, p.id";
-        break;
-    case 3:
-        $sqlOrderBy = " ORDER BY p.`zc_order_id`, p.id";
-        break;
-    case 4:
-        $sqlOrderBy = " ORDER BY p.`amount_gross` DESC";
-        break;
-    case 5:
-        $sqlOrderBy = " ORDER BY p.`amount_gross`";
-        break;
-    default:
-        $sqlOrderBy = " ORDER BY p.`id` DESC";
-        break;
-}
+$sqlOrderBy = match ($selectedSortOrder) {
+    1 => " ORDER BY p.`id`",
+    2 => " ORDER BY p.`zc_order_id` DESC, p.id",
+    3 => " ORDER BY p.`zc_order_id`, p.id",
+    4 => " ORDER BY p.`amount_gross` DESC",
+    5 => " ORDER BY p.`amount_gross`",
+    default => " ORDER BY p.`id` DESC",
+};
 
-$action         = isset($_GET['action']) ? $_GET['action'] : '';
-$selectedStatus = isset($_GET['pf_status']) ? $_GET['pf_status'] : '';
+$action         = $_GET['action'] ?? '';
+$selectedStatus = $_GET['pf_status'] ?? '';
 
-require(DIR_FS_CATALOG_MODULES . 'payment/payfast.php');
+require_once DIR_FS_CATALOG_MODULES . 'payment/payfast.php';
 
 // Create payment statuses array
 $sql    =
@@ -105,7 +90,7 @@ echo HTML_PARAMS; ?>>
       function init() {
         cssjsmenu('navbar')
         if (document.getElementById) {
-          var kill = document.getElementById('hoverJS')
+          const kill = document.getElementById('hoverJS')
           kill.disabled = true
         }
       }
@@ -115,30 +100,30 @@ echo HTML_PARAMS; ?>>
 
 <!-- header //-->
 <?php
-require(DIR_WS_INCLUDES . 'header.php'); ?>
+require_once DIR_WS_INCLUDES . 'header.php'; ?>
 <!-- header_eof //-->
 
 <!-- body //-->
 <table style="width: 100%; border: 0;">
     <tr>
         <!-- body_text //-->
-        <td style="vertical-align: top; width: 100%;">
+        <th style="vertical-align: top; width: 100%;">
 
             <table style="width: 100%; border: 0;">
                 <tr>
-                    <td>
+                    <th>
 
                         <table>
                             <tr>
-                                <td class="pageHeading"><?php
-                                    echo HEADING_ADMIN_TITLE; ?></td>
-                                <td class="pageHeading"><?php
+                                <th scope="col" class="pageHeading"><?php
+                                    echo HEADING_ADMIN_TITLE; ?></th>
+                                <th scope="col" class="pageHeading"><?php
                                     echo zen_draw_separator(
                                         'pixel_trans.gif',
                                         HEADING_IMAGE_WIDTH,
                                         HEADING_IMAGE_HEIGHT
-                                    ); ?></td>
-                                <td class="smallText">
+                                    ); ?></th>
+                                <th scope="col" class="smallText">
                                     <?php
                                     echo
                                         zen_draw_form('pf_status', FILENAME_PAYFAST, '', 'get') .
@@ -166,50 +151,50 @@ require(DIR_WS_INCLUDES . 'header.php'); ?>
                                         zen_draw_hidden_field('pf_status', $_GET['pf_status']) .
                                         '</form>';
                                     ?>
-                                </td>
-                                <td class="pageHeading">
+                                </th>
+                                <th scope="col" class="pageHeading">
                                     <?php
                                     echo zen_draw_separator(
                                         'pixel_trans.gif',
                                         HEADING_IMAGE_WIDTH,
                                         HEADING_IMAGE_HEIGHT
-                                    ); ?></td>
+                                    ); ?></th>
                             </tr>
                         </table>
 
-                    </td>
+                    </th>
                 </tr>
                 <tr>
-                    <td>
+                    <th>
 
                         <table>
                             <tr>
-                                <td>
+                                <th>
 
                                     <table>
                                         <tr class="dataTableHeadingRow">
-                                            <td class="dataTableHeadingContent">
+                                            <th scope="col" class="dataTableHeadingContent">
                                                 <?php
-                                                echo TABLE_HEADING_ORDER_NUMBER; ?></td>
-                                            <td class="dataTableHeadingContent">
+                                                echo TABLE_HEADING_ORDER_NUMBER; ?></th>
+                                            <th scope="col" class="dataTableHeadingContent">
                                                 <?php
-                                                echo TABLE_HEADING_MERCHANT_REF; ?></td>
-                                            <td class="dataTableHeadingContent">
+                                                echo TABLE_HEADING_MERCHANT_REF; ?></th>
+                                            <th scope="col" class="dataTableHeadingContent">
                                                 <?php
-                                                echo TABLE_HEADING_STATUS; ?></td>
-                                            <td class="dataTableHeadingContent">
+                                                echo TABLE_HEADING_STATUS; ?></th>
+                                            <th scope="col" class="dataTableHeadingContent">
                                                 <?php
-                                                echo TABLE_HEADING_AMOUNT_GROSS; ?></td>
-                                            <td class="dataTableHeadingContent">
+                                                echo TABLE_HEADING_AMOUNT_GROSS; ?></th>
+                                            <th scope="col" class="dataTableHeadingContent">
                                                 <?php
-                                                echo TABLE_HEADING_AMOUNT_FEE; ?></td>
-                                            <td class="dataTableHeadingContent">
+                                                echo TABLE_HEADING_AMOUNT_FEE; ?></th>
+                                            <th scope="col" class="dataTableHeadingContent">
                                                 <?php
-                                                echo TABLE_HEADING_AMOUNT_NET; ?></td>
-                                            <td class="dataTableHeadingContent">
+                                                echo TABLE_HEADING_AMOUNT_NET; ?></th>
+                                            <th scope="col" class="dataTableHeadingContent">
                                                 <?php
                                                 echo TABLE_HEADING_ACTION; ?>&nbsp;
-                                            </td>
+                                            </th>
                                         </tr>
                                         <?php
                                         if (zen_not_null($selectedStatus)) {
@@ -246,8 +231,7 @@ require(DIR_WS_INCLUDES . 'header.php'); ?>
 
                                             if (
                                                 (!isset($_GET['pf_order_id']) ||
-                                                 (isset($_GET['pf_order_id']) &&
-                                                  ($_GET['pf_order_id'] == $trans->fields['id']))) &&
+                                                 (($_GET['pf_order_id'] == $trans->fields['id']))) &&
                                                 !isset($info)
                                             ) {
                                                 $info = new objectInfo($trans->fields);
@@ -302,7 +286,7 @@ require(DIR_WS_INCLUDES . 'header.php'); ?>
                                                 // ZenCart order id
                                                 TABLE_CONTENT_HTML . $trans->fields['zc_order_id'] . TD_END_HTML .
 
-                                                // PayFast m_payment_id
+                                                // Payfast m_payment_id
                                                 TABLE_CONTENT_HTML . $trans->fields['m_payment_id'] . TD_END_HTML .
 
                                                 TABLE_CONTENT_HTML .
@@ -357,18 +341,18 @@ require(DIR_WS_INCLUDES . 'header.php'); ?>
                                         }
                                         ?>
                                         <tr>
-                                            <td colspan="5">
+                                            <th scope="col" colspan="5">
                                                 <table>
                                                     <tr>
-                                                        <td class="smallText">
+                                                        <th scope="col" class="smallText">
                                                             <?php
                                                             echo $split->display_count(
                                                                 $qryNumRows,
                                                                 MAX_DISPLAY_SEARCH_RESULTS_PAYFAST,
                                                                 $_GET['page'],
                                                                 TEXT_DISPLAY_NUMBER_OF_TRANSACTIONS
-                                                            ); ?></td>
-                                                        <td class="smallText">
+                                                            ); ?></th>
+                                                        <th scope="col" class="smallText">
                                                             <?php
                                                             echo $split->display_links(
                                                                 $qryNumRows,
@@ -381,13 +365,13 @@ require(DIR_WS_INCLUDES . 'header.php'); ?>
                                                                 (zen_not_null(
                                                                     $selectedSortOrder
                                                                 ) ? SORT_ORDER_LITERAL . $selectedSortOrder : '')
-                                                            ); ?></td>
+                                                            ); ?></th>
                                                     </tr>
                                                 </table>
-                                            </td>
+                                            </th>
                                         </tr>
                                     </table>
-                                </td>
+                                </th>
                                 <?php
                                 $heading  = array();
                                 $contents = array();
@@ -457,22 +441,22 @@ require(DIR_WS_INCLUDES . 'header.php'); ?>
                                 }
 
                                 if ((zen_not_null($heading)) && (zen_not_null($contents))) {
-                                    echo '            <td width="25%" valign="top">' . "\n";
+                                    echo '            <th scope="col" width="25%" valign="top">' . "\n";
 
                                     $box = new box();
                                     echo $box->infoBox($heading, $contents);
 
-                                    echo '            </td>' . "\n";
+                                    echo '            </th>' . "\n";
                                 }
                                 ?>
                             </tr>
                         </table>
 
-                    </td>
+                    </th>
                 </tr>
             </table>
 
-        </td>
+        </th>
         <!-- body_text_eof //-->
     </tr>
 </table>
@@ -480,11 +464,11 @@ require(DIR_WS_INCLUDES . 'header.php'); ?>
 
 <!-- footer //-->
 <?php
-require(DIR_WS_INCLUDES . 'footer.php'); ?>
+require_once DIR_WS_INCLUDES . 'footer.php'; ?>
 <!-- footer_eof //-->
 <br>
 
 </body>
 </html>
 <?php
-require(DIR_WS_INCLUDES . 'application_bottom.php'); ?>
+require_once DIR_WS_INCLUDES . 'application_bottom.php'; ?>

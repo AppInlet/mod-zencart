@@ -4,29 +4,38 @@
  * payfast.php
  *
  * Main module file which is responsible for installing, editing and deleting
- * module details from DB and sending data to PayFast.
+ * module details from DB and sending data to Payfast.
  *
- * Copyright (c) 2023 PayFast (Pty) Ltd
- * You (being anyone who is not PayFast (Pty) Ltd) may download and use this plugin / code in your own website in
- * conjunction with a registered and active PayFast account. If your PayFast account is terminated for any reason,
+ * Copyright (c) 2024 Payfast (Pty) Ltd
+ * You (being anyone who is not Payfast (Pty) Ltd) may download and use this plugin / code in your own website in
+ * conjunction with a registered and active Payfast account. If your Payfast account is terminated for any reason,
  * you may not use this plugin / code or part thereof.
  * Except as expressly indicated in this licence, you may not use, copy, modify or distribute this plugin / code or
  * part thereof in any way.
  */
 
+
 // Load dependency files
-if (defined('MODULE_PAYMENT_PAYFAST_DEBUG') && !defined("PF_DEBUG")) {
-    define('PF_DEBUG', MODULE_PAYMENT_PAYFAST_DEBUG == 'True');
+if (defined('MODULE_PAYMENT_PF_DEBUG') && !defined('PF_DEBUG')) {
+    define('PF_DEBUG', MODULE_PAYMENT_PF_DEBUG == 'True');
 }
 // phpcs:disable
-include_once((IS_ADMIN_FLAG === true ? DIR_FS_CATALOG_MODULES : DIR_WS_MODULES) . 'payment/payfast/payfast_common.inc');
-include_once((IS_ADMIN_FLAG === true ? DIR_FS_CATALOG_MODULES : DIR_WS_MODULES) . 'payment/payfast/payfast_functions.php');
+include_once (IS_ADMIN_FLAG === true ? DIR_FS_CATALOG_MODULES : DIR_WS_MODULES) . 'payment/payfast/payfast_functions.php';
+
+require_once __DIR__ . '/payfast/vendor/autoload.php';
+require_once __DIR__ . '/payfast/payfastinstaller.php';
 // phpcs:enable
+
+use Payfast\PayfastCommon\PayfastCommon;
+
+const PF_MODULE_NAME = 'Payfast_ZenCart';
+const PF_MODULE_VER = '1.2.0';
 
 /**
  * payfast
  *
- * Class for PayFast
+ * Class for Payfast
+ *
  * @phpcs:disable PSR1.Classes.ClassDeclaration.MissingNamespace
  * @phpcs:disable Squiz.Classes.ValidClassName.NotCamelCaps
  */
@@ -42,7 +51,7 @@ class payfast extends base
      * @param int $id
      *
      * @return payfast
-     * @author PayFast (Pty) Ltd
+     * @author Payfast (Pty) Ltd
      */
 
     private const DELETE_LITERAL = 'DELETE FROM ';
@@ -53,86 +62,106 @@ class payfast extends base
      * $code string repesenting the payment method
      * @var string
      */
-    public $code;
+    public string $code;
 
     /**
      * $title is the displayed name for this payment method
      * @var string
      */
-    public $title;
+    public string $title;
 
     /**
      * $description is a soft name for this payment method
      * @var string
      */
-    public $description;
+    public string $description;
 
     /**
      * $enabled determines whether this module shows or not... in catalog.
-     * @var boolean
+     *
+     * @var bool
      */
-    public $enabled;
+    public bool $enabled;
+    public string $codeVersion;
+    public string $transaction_currency;
+    public string $form_action_url;
+    public int $order_status;
+    public int|string $sort_order;
 
-    public function __construct($id = '')
+    /**
+     * @param string $id
+     */
+    public function __construct(string $id = '')
     {
-        // Variable initialization
         global $order, $messageStack;
         $this->code        = 'payfast';
         $this->codeVersion = '1.5.8';
+        $this->form_action_url = '';
+        $this->sort_order = 0;
 
-        // Set payment module title in Admin
         if (IS_ADMIN_FLAG === true) {
-            $this->title = 'PayFast';
-
-            // Check if in test mode
-            if (defined('MODULE_PAYMENT_PAYFAST_SERVER')) {
-                if (IS_ADMIN_FLAG === true && MODULE_PAYMENT_PAYFAST_SERVER == 'Test') {
-                    $this->title .= '<span class="alert"> (test mode active)</span>';
-                }
+            $this->title = 'Payfast';
+            if (defined('MODULE_PAYMENT_PF_SERVER')) {
+                $this->title .= $this->getTestModeAlert();
             } else {
                 $this->title .= '<span class="alert"> (test mode active)</span>';
             }
         } else {
-            // Set payment module title in Catalog
-            $this->title = MODULE_PAYMENT_PAYFAST_TEXT_CATALOG_TITLE;
+            $this->title = MODULE_PAYMENT_PF_TEXT_CATALOG_TITLE;
         }
 
-        // Set other payment module variables
-        $this->description = MODULE_PAYMENT_PAYFAST_TEXT_DESCRIPTION;
-        if (defined('MODULE_PAYMENT_PAYFAST_SORT_ORDER')) {
-            $this->sort_order = MODULE_PAYMENT_PAYFAST_SORT_ORDER;
+        $this->description = MODULE_PAYMENT_PF_TEXT_DESCRIPTION;
+
+        if (defined('MODULE_PAYMENT_PF_SORT_ORDER')) {
+            $this->sort_order = MODULE_PAYMENT_PF_SORT_ORDER;
         }
 
-        if (defined('MODULE_PAYMENT_PAYFAST_STATUS')) {
-            $this->enabled = ((MODULE_PAYMENT_PAYFAST_STATUS == 'True') ? true : false);
+        if (defined('MODULE_PAYMENT_PF_STATUS')) {
+            $this->enabled = (MODULE_PAYMENT_PF_STATUS == 'True');
         }
 
-        if (defined('MODULE_PAYMENT_PAYFAST_ORDER_STATUS_ID') && (int)MODULE_PAYMENT_PAYFAST_ORDER_STATUS_ID > 0) {
-            $this->order_status = MODULE_PAYMENT_PAYFAST_ORDER_STATUS_ID;
-        }
-
+        $this->setOrderStatus();
 
         if (is_object($order)) {
             $this->update_status();
         }
 
+        $this->setFormActionUrl();
+    }
 
-        if (defined('MODULE_PAYMENT_PAYFAST_SERVER')) {
-            // Set posting destination destination
-            if (MODULE_PAYMENT_PAYFAST_SERVER == 'Test') {
-                $this->form_action_url = 'https://' . MODULE_PAYMENT_PAYFAST_SERVER_TEST;
-            } else {
-                $this->form_action_url = 'https://' . MODULE_PAYMENT_PAYFAST_SERVER_LIVE;
-            }
+    /**
+     * @return string
+     */
+    private function getTestModeAlert(): string
+    {
+        if (MODULE_PAYMENT_PF_SERVER == 'Test') {
+            return '<span class="alert"> (test mode active)</span>';
         }
+        return '';
+    }
 
-        $this->form_action_url .= '/eng/process';
-
-        // Check for right version
-        if (PROJECT_VERSION_MAJOR != '1' && substr(PROJECT_VERSION_MINOR, 0, 3) != '3.9') {
-            $this->enabled = false;
+    /**
+     * @return void
+     */
+    private function setOrderStatus(): void
+    {
+        if (defined('MODULE_PAYMENT_PF_ORDER_STATUS_ID') && (int)MODULE_PAYMENT_PF_ORDER_STATUS_ID > 0) {
+            $this->order_status = MODULE_PAYMENT_PF_ORDER_STATUS_ID;
         }
     }
+
+    /**
+     * @return void
+     */
+    private function setFormActionUrl(): void
+    {
+        if (defined('MODULE_PAYMENT_PF_SERVER')) {
+            $this->form_action_url = 'https://';
+            $this->form_action_url .= (MODULE_PAYMENT_PF_SERVER == 'Test') ? MODULE_PAYMENT_PF_SERVER_TEST : MODULE_PAYMENT_PF_SERVER_LIVE;
+        }
+        $this->form_action_url .= '/eng/process';
+    }
+
 
     /**
      * update_status
@@ -140,19 +169,19 @@ class payfast extends base
      * Calculate zone matches and flag settings to determine whether this
      * module should display to customers or not.
      *
-     * @author PayFast (Pty) Ltd
+     * @author Payfast (Pty) Ltd
      * @phpcs:disable PSR1.Methods.CamelCapsMethodName.NotCamelCaps
      */
-    public function update_status()
+    public function update_status(): void
     {
         global $order, $db;
 
-        if ($this->enabled && ((int)MODULE_PAYMENT_PAYFAST_ZONE > 0)) {
+        if ($this->enabled && ((int)MODULE_PAYMENT_PF_ZONE > 0)) {
             $check_flag  = false;
             $check_query = $db->Execute(
-                "SELECT `zone_id`
-                FROM " . TABLE_ZONES_TO_GEO_ZONES . "
-                WHERE `geo_zone_id` = '" . MODULE_PAYMENT_PAYFAST_ZONE . "'
+                'SELECT `zone_id`
+                FROM ' . TABLE_ZONES_TO_GEO_ZONES . "
+                WHERE `geo_zone_id` = '" . MODULE_PAYMENT_PF_ZONE . "'
                   AND `zone_country_id` = '" . $order->billing['country']['id'] . "'
                 ORDER BY `zone_id`"
             );
@@ -181,13 +210,13 @@ class payfast extends base
      * (Number, Owner, and CVV Lengths)
      *
      * >> Standard ZenCart
-     * @return string
-     * @author PayFast (Pty) Ltd
+     * @return bool|string
+     * @author Payfast (Pty) Ltd
      * @phpcs:disable PSR1.Methods.CamelCapsMethodName.NotCamelCaps
      */
-    public function javascript_validation()
+    public function javascript_validation(): bool|string
     {
-        return (false);
+        return false;
     }
 
     /**
@@ -198,15 +227,15 @@ class payfast extends base
      *
      * >> Standard ZenCart
      * @return array
-     * @author PayFast (Pty) Ltd
+     * @author Payfast (Pty) Ltd
      */
-    public function selection()
+    public function selection(): array
     {
-        return array(
+        return [
             'id'     => $this->code,
-            'module' => MODULE_PAYMENT_PAYFAST_TEXT_CATALOG_LOGO,
-            'icon'   => MODULE_PAYMENT_PAYFAST_TEXT_CATALOG_LOGO
-        );
+            'module' => MODULE_PAYMENT_PF_TEXT_CATALOG_LOGO,
+            'icon'   => MODULE_PAYMENT_PF_TEXT_CATALOG_LOGO
+        ];
     }
 
     /**
@@ -217,12 +246,12 @@ class payfast extends base
      * Since payfast module is not collecting info, it simply skips this step.
      *
      * >> Standard ZenCart
-     * @return boolean
-     * @author PayFast (Pty) Ltd
+     * @return bool
+     * @author Payfast (Pty) Ltd
      */
-    public function pre_confirmation_check()
+    public function pre_confirmation_check(): bool
     {
-        return (false);
+        return false;
     }
 
     /**
@@ -232,12 +261,12 @@ class payfast extends base
      * Since none is collected for payfast before forwarding to payfast site, this is skipped
      *
      * >> Standard ZenCart
-     * @return boolean
-     * @author PayFast (Pty) Ltd
+     * @return bool
+     * @author Payfast (Pty) Ltd
      */
-    public function confirmation()
+    public function confirmation(): bool
     {
-        return (false);
+        return false;
     }
 
     /**
@@ -251,17 +280,18 @@ class payfast extends base
      *
      * >> Standard ZenCart
      * @return string
-     * @author PayFast (Pty) Ltd
+     * @author Payfast (Pty) Ltd
      */
-    public function process_button()
+    public function process_button(): string
     {
         // Variable initialization
         global $db, $order, $currencies, $currency;
-        $data        = array();
-        $buttonArray = array();
+        $buttonArray = [];
 
-        $merchantId  = MODULE_PAYMENT_PAYFAST_MERCHANT_ID;
-        $merchantKey = MODULE_PAYMENT_PAYFAST_MERCHANT_KEY;
+        $payfastCommon = new PayfastCommon(true);
+
+        $merchantId  = MODULE_PAYMENT_PF_MERCHANT_ID;
+        $merchantKey = MODULE_PAYMENT_PF_MERCHANT_KEY;
 
         // Create URLs
         $returnUrl = zen_href_link(FILENAME_CHECKOUT_PROCESS, 'referer=payfast', 'SSL');
@@ -271,9 +301,9 @@ class payfast extends base
         //// Set the currency and get the order amount
         $currency                   = 'ZAR';
         $currencyDecPlaces          = $currencies->get_decimal_places($currency);
-        $this->totalsum             = $order->info['total'];
+        $totalsum = $order->info['total'];
         $this->transaction_currency = $currency;
-        $this->transaction_amount   = ($this->totalsum * $currencies->get_value($currency));
+        $transaction_amount = ($totalsum * $currencies->get_value($currency));
 
         //// Generate the order description
         $orderDescription = '';
@@ -297,7 +327,7 @@ class payfast extends base
         }
 
         $orderDescription .= 'Shipping = ' . number_format($order->info['shipping_cost'], $currencyDecPlaces) . '; ';
-        $orderDescription .= 'Total= ' . number_format($this->transaction_amount, $currencyDecPlaces) . '; ';
+        $orderDescription .= 'Total= ' . number_format($transaction_amount, $currencyDecPlaces) . '; ';
 
 
         //// Save the session (and remove expired sessions)
@@ -312,15 +342,15 @@ class payfast extends base
         $db->Execute($sql);
 
         // patch for multi-currency - AGB 19/07/13 - see also the ITN handler
-        $_SESSION['payfast_amount'] = number_format($this->transaction_amount, $currencyDecPlaces, '.', '');
+        $_SESSION['payfast_amount'] = number_format($transaction_amount, $currencyDecPlaces, '.', '');
 
-        // remove amp; before POSTing to PayFast
-        $cancelUrl = str_replace("amp;", "", $cancelUrl);
-        $returnUrl = str_replace("amp;", "", $returnUrl);
+        // remove amp; before POSTing to Payfast
+        $cancelUrl = str_replace('amp;', '', $cancelUrl);
+        $returnUrl = str_replace('amp;', '', $returnUrl);
 
         //// Set the data
         $mPaymentId = pf_createUUID();
-        $data       = array(
+        $data       = [
             // Merchant fields
             'merchant_id'   => $merchantId,
             'merchant_key'  => $merchantKey,
@@ -334,14 +364,14 @@ class payfast extends base
             'email_address' => $order->customer['email_address'],
 
             'm_payment_id'     => $mPaymentId,
-            'amount'           => number_format($this->transaction_amount, $currencyDecPlaces, '.', ''),
+            'amount'           => number_format($transaction_amount, $currencyDecPlaces, '.', ''),
 
             // Item Details
-            'item_name'        => MODULE_PAYMENT_PAYFAST_PURCHASE_DESCRIPTION_TITLE . $mPaymentId,
+            'item_name'        => MODULE_PAYMENT_PF_PURCHASE_DESCRIPTION_TITLE . $mPaymentId,
             'item_description' => substr($orderDescription, 0, 254),
             'custom_str1'      => PF_MODULE_NAME . '_' . PF_MODULE_VER,
             'custom_str2'      => zen_session_name() . '=' . zen_session_id(),
-        );
+        ];
 
         $_SESSION['guest_detail'] = json_encode($_POST);
 
@@ -360,16 +390,16 @@ class payfast extends base
             $pfOutput .= $name . '=' . urlencode(trim($value)) . '&';
         }
 
-        $passPhrase = MODULE_PAYMENT_PAYFAST_PASSPHRASE;
+        $passPhrase = MODULE_PAYMENT_PF_PASSPHRASE;
 
         $pfOutput = substr($pfOutput, 0, -1);
 
         if (!empty($passPhrase)) {
-            $pfOutput = $pfOutput . "&passphrase=" . urlencode($passPhrase);
+            $pfOutput = $pfOutput . '&passphrase=' . urlencode($passPhrase);
         }
 
         $data['signature'] = md5($pfOutput);
-        pflog("Data to send:\n" . print_r($data, true));
+        $payfastCommon->pflog("Data to send:\n" . print_r($data, true));
 
 
         //// Check the data and create the process button array
@@ -381,9 +411,7 @@ class payfast extends base
             $buttonArray[] = zen_draw_hidden_field($name, $value);
         }
 
-        $processButtonString = implode("\n", $buttonArray) . "\n";
-
-        return ($processButtonString);
+        return implode("\n", $buttonArray) . "\n";
     }
 
     /**
@@ -394,12 +422,14 @@ class payfast extends base
      *
      * >> Standard ZenCart
      * >> Called when the user is returned from the payment gateway
-     * @author PayFast (Pty) Ltd
+     * @author Payfast (Pty) Ltd
      */
-    public function before_process()
+    public function before_process(): void
     {
         $pre = __METHOD__ . ' : ';
-        pflog($pre . 'bof');
+        $payfastCommon = new PayfastCommon(true);
+
+        $payfastCommon->pflog($pre . 'bof');
 
         // Variable initialization
         global $db, $order_total_modules, $insert_id;
@@ -427,12 +457,12 @@ class payfast extends base
         } else {
             $this->notify('NOTIFY_PAYMENT_PAYFAST_CANCELLED_DURING_CHECKOUT');
 
-            // Remove the pending PayFast transaction from the table
+            // Remove the pending Payfast transaction from the table
             if (isset($_SESSION['pf_m_payment_id'])) {
                 $sql =
-                    self::DELETE_LITERAL . pf_getActiveTable() . "
-                    WHERE `m_payment_id` = " . $_SESSION['pf_m_payment_id'] . "
-                    LIMIT 1";
+                    self::DELETE_LITERAL . pf_getActiveTable() . '
+                    WHERE `m_payment_id` = ' . $_SESSION['pf_m_payment_id'] . '
+                    LIMIT 1';
                 $db->Execute($sql);
 
                 unset($_SESSION['pf_m_payment_id']);
@@ -452,12 +482,12 @@ class payfast extends base
      *
      * @param string $zf_domain
      *
-     * @return boolean
-     * @author PayFast (Pty) Ltd
+     * @return bool
+     * @author Payfast (Pty) Ltd
      */
-    public function check_referrer($zf_domain)
+    public function check_referrer(string $zf_domain): bool
     {
-        return (true);
+        return true;
     }
 
     /**
@@ -466,268 +496,74 @@ class payfast extends base
      * Post-processing activities
      *
      * >> Standard ZenCart
-     * @return boolean
-     * @author PayFast (Pty) Ltd
+     * @return bool
+     * @author Payfast (Pty) Ltd
      */
-    public function after_process()
+    public function after_process(): bool
     {
         $pre = __METHOD__ . ' : ';
-        pflog($pre . 'bof');
+        $payfastCommon = new PayfastCommon(true);
+
+        $payfastCommon->pflog($pre . 'bof');
 
         $this->notify('NOTIFY_HEADER_START_CHECKOUT_PROCESS');
 
         // Set 'order not created' flag
         $_SESSION['order_created'] = '';
 
-        return (false);
+        return false;
     }
 
     /**
      * Used to display error message details
      *
-     * @return boolean
-     * @author PayFast (Pty) Ltd
+     * @return bool
+     * @author Payfast (Pty) Ltd
      */
-    public function output_error()
+    public function output_error(): bool
     {
-        return (false);
+        return false;
     }
 
     /**
      * Check to see whether module is installed
      *
      * >> Standard ZenCart
-     * @return boolean
-     * @author PayFast (Pty) Ltd
+     * @return bool
+     * @author Payfast (Pty) Ltd
      */
-    public function check()
+    public function check(): bool
     {
         // Variable initialization
         global $db;
 
         if (!isset($this->_check)) {
             $check_query  = $db->Execute(
-                "SELECT `configuration_value`
-                FROM " . TABLE_CONFIGURATION . "
-                WHERE `configuration_key` = 'MODULE_PAYMENT_PAYFAST_STATUS'"
+                'SELECT `configuration_value`
+                FROM ' . TABLE_CONFIGURATION . "
+                WHERE `configuration_key` = 'MODULE_PAYMENT_PF_STATUS'"
             );
             $this->_check = $check_query->RecordCount();
         }
 
-        return ($this->_check);
+        return $this->_check;
     }
 
     /**
      * install
      *
-     * Installs PayFast payment module in osCommerce and creates necessary
+     * Installs Payfast payment module in osCommerce and creates necessary
      * configuration fields which need to be supplied by store owner.
      *
      * >> Standard ZenCart
-     * @author PayFast (Pty) Ltd
+     * @author Payfast (Pty) Ltd
      */
-    public function install()
+    public function install(): void
     {
         // Variable Initialization
         global $db;
-
-        //// Insert configuration values
-        // MODULE_PAYMENT_PAYFAST_STATUS (Default = False)
-        $db->Execute(
-            self::INSERT_LITERAL . TABLE_CONFIGURATION .
-            "( configuration_title, configuration_key, configuration_value, configuration_description,
-             configuration_group_id, sort_order, set_function, date_added )
-            VALUES( 'Enable Payfast?', 'MODULE_PAYMENT_PAYFAST_STATUS', 'False',
-             'Do you want to enable Payfast?', '6', '0', 'zen_cfg_select_option(array(\'True\', \'False\'), ', now() )"
-        );
-        // MODULE_PAYMENT_PAYFAST_MERCHANT_ID (Default = Generic sandbox credentials)
-        $db->Execute(
-            self::INSERT_LITERAL . TABLE_CONFIGURATION .
-            "( configuration_title, configuration_key, configuration_value, configuration_description,
- configuration_group_id, sort_order, date_added )
-            VALUES( 'Merchant ID', 'MODULE_PAYMENT_PAYFAST_MERCHANT_ID', '10000100', 'Your Merchant ID from PayFast
-            <br><span style=\"font-size: 0.9em; color: green;\">(Click <a href=\"https://my.payfast.co.za/login\"
-             target=\"_blank\">here</a> to get yours. This is initially set to a test value for testing purposes.)
-             </span>', '6', '0', now() )"
-        );
-        // MODULE_PAYMENT_PAYFAST_MERCHANT_KEY (Default = Generic sandbox credentials)
-        $db->Execute(
-            self::INSERT_LITERAL . TABLE_CONFIGURATION . "( configuration_title, configuration_key, configuration_value,
- configuration_description, configuration_group_id, sort_order, date_added )
-            VALUES( 'Merchant Key', 'MODULE_PAYMENT_PAYFAST_MERCHANT_KEY', '46f0cd694581a',
-             'Your Merchant Key from PayFast<br><span style=\"font-size: 0.9em; color: green;\">
-             (Click <a href=\"https://my.payfast.co.za/login\" target=\"_blank\">here</a>
-              to get yours. This is initially set to a test value for testing purposes.)</span>', '6', '0', now() )"
-        );
-        // MODULE_PAYMENT_PAYFAST_PASSPHRASE
-        $db->Execute(
-            self::INSERT_LITERAL . TABLE_CONFIGURATION . "( configuration_title, configuration_key, configuration_value,
-             configuration_description, configuration_group_id, sort_order, date_added )
-            VALUES( 'Passphrase', 'MODULE_PAYMENT_PAYFAST_PASSPHRASE', '',
-             'Only enter a Passphrase if you have one set on your PayFast account', '6', '0', now() )"
-        );
-        // MODULE_PAYMENT_PAYFAST_SERVER (Default = Test)
-        $db->Execute(
-            self::INSERT_LITERAL . TABLE_CONFIGURATION . "( configuration_title, configuration_key, configuration_value,
-             configuration_description, configuration_group_id, sort_order, set_function, date_added )
-            VALUES( 'Transaction Server', 'MODULE_PAYMENT_PAYFAST_SERVER', 'Test', 'Select the PayFast server to use',
-             '6', '0', 'zen_cfg_select_option(array(\'Live\', \'Test\'), ', now() )"
-        );
-        // MODULE_PAYMENT_PAYFAST_SORT_ORDER (Default = 0)
-        $db->Execute(
-            self::INSERT_LITERAL . TABLE_CONFIGURATION . "( configuration_title, configuration_key, configuration_value,
-             configuration_description, configuration_group_id, sort_order, date_added )
-            VALUES( 'Sort Display Order', 'MODULE_PAYMENT_PAYFAST_SORT_ORDER', '0', 'Sort order of display.
-             Lowest is displayed first.', '6', '0', now())"
-        );
-        // MODULE_PAYMENT_PAYFAST_ZONE (Default = "-none-")
-        $db->Execute(
-            self::INSERT_LITERAL . TABLE_CONFIGURATION . "( configuration_title, configuration_key, configuration_value,
-             configuration_description, configuration_group_id, sort_order, use_function, set_function, date_added )
-            VALUES( 'Payment Zone', 'MODULE_PAYMENT_PAYFAST_ZONE', '0', 'If a zone is selected, only enable this payment
-             method for that zone.', '6', '2', 'zen_get_zone_class_title', 'zen_cfg_pull_down_zone_classes(', now())"
-        );
-        // MODULE_PAYMENT_PAYFAST_PREPARE_ORDER_STATUS_ID
-        $db->Execute(
-            self::INSERT_LITERAL . TABLE_CONFIGURATION . "( configuration_title, configuration_key, configuration_value,
-             configuration_description, configuration_group_id, sort_order, set_function, use_function, date_added )
-            VALUES( 'Set Preparing Order Status', 'MODULE_PAYMENT_PAYFAST_PREPARE_ORDER_STATUS_ID', '1', 'Set the status
-             of prepared orders made with PayFast to this value', '6', '0',
-              'zen_cfg_pull_down_order_statuses(', 'zen_get_order_status_name', now())"
-        );
-        // MODULE_PAYMENT_PAYFAST_ORDER_STATUS_ID
-        $db->Execute(
-            self::INSERT_LITERAL . TABLE_CONFIGURATION . "( configuration_title, configuration_key, configuration_value,
-             configuration_description, configuration_group_id, sort_order, set_function, use_function, date_added )
-            VALUES( 'Set Acknowledged Order Status', 'MODULE_PAYMENT_PAYFAST_ORDER_STATUS_ID', '2',
-             'Set the status of orders made with PayFast to this value', '6', '0',
-             'zen_cfg_pull_down_order_statuses(', 'zen_get_order_status_name', now())"
-        );
-        // MODULE_PAYMENT_PAYFAST_DEBUG (Default = False)
-        $db->Execute(
-            self::INSERT_LITERAL . TABLE_CONFIGURATION . "( configuration_title, configuration_key, configuration_value,
-             configuration_description, configuration_group_id, sort_order, set_function, date_added )
-            VALUES( 'Enable debugging?', 'MODULE_PAYMENT_PAYFAST_DEBUG', 'False', 'Do you want to enable debugging?',
-             '6', '0', 'zen_cfg_select_option(array(\'True\', \'False\'), ', now() )"
-        );
-        // MODULE_PAYMENT_PAYFAST_DEBUG_EMAIL
-        $db->Execute(
-            self::INSERT_LITERAL . TABLE_CONFIGURATION . "( configuration_title, configuration_key, configuration_value,
-             configuration_description, configuration_group_id, sort_order, date_added )
-            VALUES( 'Debug email address', 'MODULE_PAYMENT_PAYFAST_DEBUG_EMAIL', '',
-             'Where would you like debugging information emailed?', '6', '0', now() )"
-        );
-
-        //// Create tables
-        $tables    = array();
-        $result    = $db->Execute("SHOW TABLES LIKE 'payfast%'");
-        $fieldName = 'Tables_in_' . DB_DATABASE . ' (payfast%)';
-
-        while (!$result->EOF) {
-            $tables[] = $result->fields[$fieldName];
-            $result->MoveNext();
-        }
-
-        // Main payfast table
-        if (!in_array(TABLE_PAYFAST, $tables)) {
-            $db->Execute(
-                self::CREATE_LITERAL . TABLE_PAYFAST . "` (
-                  `id` INTEGER UNSIGNED NOT NULL auto_increment,
-                  `m_payment_id` VARCHAR(36) NOT NULL,
-                  `pf_payment_id` VARCHAR(36) NOT NULL,
-                  `zc_order_id` INTEGER UNSIGNED DEFAULT NULL,
-                  `amount_gross` DECIMAL(14,2) DEFAULT NULL,
-                  `amount_fee` DECIMAL(14,2) DEFAULT NULL,
-                  `amount_net` DECIMAL(14,2) DEFAULT NULL,
-                  `payfast_data` TEXT DEFAULT NULL,
-                  `timestamp` DATETIME DEFAULT NULL,
-                  `status` VARCHAR(50) DEFAULT NULL,
-                  `status_date` DATETIME DEFAULT NULL,
-                  `status_reason` VARCHAR(255) DEFAULT NULL,
-                  PRIMARY KEY( `id` ),
-                  KEY `idx_m_payment_id` (`m_payment_id`),
-                  KEY `idx_pf_payment_id` (`pf_payment_id`),
-                  KEY `idx_zc_order_id` (`zc_order_id`),
-                  KEY `idx_timestamp` (`timestamp`)
-                  ) ENGINE=MyISAM DEFAULT CHARSET=latin1"
-            );
-        }
-
-        // Payment status table
-        if (!in_array(TABLE_PAYFAST_PAYMENT_STATUS, $tables)) {
-            $db->Execute(
-                self::CREATE_LITERAL . TABLE_PAYFAST_PAYMENT_STATUS . "` (
-                  `id` INTEGER UNSIGNED NOT NULL,
-                  `name` VARCHAR(50) NOT NULL,
-                  PRIMARY KEY  (`id`)
-                ) ENGINE=MyISAM DEFAULT CHARSET=latin1"
-            );
-
-            $db->Execute(
-                self::INSERT_LITERAL . TABLE_PAYFAST_PAYMENT_STATUS . "`
-                    ( `id`,`name` )
-                VALUES
-                    ( 1, 'COMPLETE' ),
-                    ( 2, 'PENDING' ),
-                    ( 3, 'FAILED' )"
-            );
-        }
-
-        // Payment status history table
-        if (!in_array(TABLE_PAYFAST_PAYMENT_STATUS_HISTORY, $tables)) {
-            $db->Execute(
-                self::CREATE_LITERAL . TABLE_PAYFAST_PAYMENT_STATUS_HISTORY . "`(
-                  `id` INTEGER UNSIGNED NOT NULL AUTO_INCREMENT,
-                  `pf_order_id` INTEGER UNSIGNED NOT NULL,
-                  `timestamp` DATETIME DEFAULT NULL,
-                  `status` VARCHAR(50) DEFAULT NULL,
-                  `status_reason` VARCHAR(255) DEFAULT NULL,
-                  PRIMARY KEY( `id` ),
-                  KEY `idx_pf_order_id` (`pf_order_id`)
-                ) ENGINE=MyISAM DEFAULT CHARSET=latin1"
-            );
-        }
-
-        // Session table
-        if (!in_array(TABLE_PAYFAST_SESSION, $tables)) {
-            $db->Execute(
-                self::CREATE_LITERAL . TABLE_PAYFAST_SESSION . "` (
-                  `id` INTEGER UNSIGNED NOT NULL AUTO_INCREMENT,
-                  `session_id` VARCHAR(100) NOT NULL,
-                  `saved_session` MEDIUMBLOB NOT NULL,
-                  `expiry` DATETIME NOT NULL,
-                  PRIMARY KEY( `id` ),
-                  KEY `idx_session_id` (`session_id`(36))
-                ) ENGINE=MyISAM DEFAULT CHARSET=latin1"
-            );
-        }
-
-        // Testing table
-        if (!in_array(TABLE_PAYFAST_TESTING, $tables)) {
-            $db->Execute(
-                self::CREATE_LITERAL . TABLE_PAYFAST_TESTING . "` (
-                  `id` INTEGER UNSIGNED NOT NULL auto_increment,
-                  `m_payment_id` VARCHAR(36) NOT NULL,
-                  `pf_payment_id` VARCHAR(36) NOT NULL,
-                  `zc_order_id` INTEGER UNSIGNED DEFAULT NULL,
-                  `amount_gross` DECIMAL(14,2) DEFAULT NULL,
-                  `amount_fee` DECIMAL(14,2) DEFAULT NULL,
-                  `amount_net` DECIMAL(14,2) DEFAULT NULL,
-                  `payfast_data` TEXT DEFAULT NULL,
-                  `timestamp` DATETIME DEFAULT NULL,
-                  `status` VARCHAR(50) DEFAULT NULL,
-                  `status_date` DATETIME DEFAULT NULL,
-                  `status_reason` VARCHAR(255) DEFAULT NULL,
-                  PRIMARY KEY( `id` ),
-                  KEY `idx_m_payment_id` (`m_payment_id`),
-                  KEY `idx_pf_payment_id` (`pf_payment_id`),
-                  KEY `idx_zc_order_id` (`zc_order_id`),
-                  KEY `idx_timestamp` (`timestamp`)
-                  ) ENGINE=MyISAM DEFAULT CHARSET=latin1"
-            );
-        }
-
-        $this->notify('NOTIFY_PAYMENT_PAYFAST_INSTALLED');
+        $installer = new payfastinstaller($db);
+        $installer->install();
     }
 
     /**
@@ -738,9 +574,9 @@ class payfast extends base
      * relevant and required.
      *
      * >> Standard ZenCart
-     * @author PayFast (Pty) Ltd
+     * @author Payfast (Pty) Ltd
      */
-    public function remove()
+    public function remove(): void
     {
         // Variable Initialization
         global $db;
@@ -748,7 +584,7 @@ class payfast extends base
         // Remove all configuration variables
         $db->Execute(
             self::DELETE_LITERAL . TABLE_CONFIGURATION . "
-            WHERE `configuration_key` LIKE 'MODULE\_PAYMENT\_PAYFAST\_%'"
+            WHERE `configuration_key` LIKE 'MODULE\_PAYMENT\_PF\_%'"
         );
 
         $this->notify('NOTIFY_PAYMENT_PAYFAST_UNINSTALLED');
@@ -761,39 +597,39 @@ class payfast extends base
      *
      * >> Standard osCommerce
      * @return array
-     * @author PayFast (Pty) Ltd
+     * @author Payfast (Pty) Ltd
      */
-    public function keys()
+    public function keys(): array
     {
         // Variable initialization
-        $keys = array(
-            'MODULE_PAYMENT_PAYFAST_STATUS',
-            'MODULE_PAYMENT_PAYFAST_MERCHANT_ID',
-            'MODULE_PAYMENT_PAYFAST_MERCHANT_KEY',
-            'MODULE_PAYMENT_PAYFAST_PASSPHRASE',
-            'MODULE_PAYMENT_PAYFAST_SERVER',
-            'MODULE_PAYMENT_PAYFAST_SORT_ORDER',
-            'MODULE_PAYMENT_PAYFAST_ZONE',
-            'MODULE_PAYMENT_PAYFAST_PREPARE_ORDER_STATUS_ID',
-            'MODULE_PAYMENT_PAYFAST_ORDER_STATUS_ID',
-            'MODULE_PAYMENT_PAYFAST_DEBUG',
-            'MODULE_PAYMENT_PAYFAST_DEBUG_EMAIL',
-        );
-
-        return ($keys);
+        return [
+            'MODULE_PAYMENT_PF_STATUS',
+            'MODULE_PAYMENT_PF_MERCHANT_ID',
+            'MODULE_PAYMENT_PF_MERCHANT_KEY',
+            'MODULE_PAYMENT_PF_PASSPHRASE',
+            'MODULE_PAYMENT_PF_SERVER',
+            'MODULE_PAYMENT_PF_SORT_ORDER',
+            'MODULE_PAYMENT_PF_ZONE',
+            'MODULE_PAYMENT_PF_PREPARE_ORDER_STATUS_ID',
+            'MODULE_PAYMENT_PF_ORDER_STATUS_ID',
+            'MODULE_PAYMENT_PF_DEBUG',
+            'MODULE_PAYMENT_PF_DEBUG_EMAIL',
+        ];
     }
 
     /**
      * after_order_create
      *
      * >> Standard osCommerce
-     * @author PayFast (Pty) Ltd
+     * @author Payfast (Pty) Ltd
      */
-    public function after_order_create($insert_id)
+    public function after_order_create($insert_id): bool
     {
         $pre = __METHOD__ . ' : ';
-        pflog($pre . 'bof');
+        $payfastCommon = new PayfastCommon(true);
 
-        return (false);
+        $payfastCommon->pflog($pre . 'bof');
+
+        return false;
     }
 }
