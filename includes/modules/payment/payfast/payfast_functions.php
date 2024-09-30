@@ -3,39 +3,41 @@
 /**
  * payfast_functions.php
  *
- * Functions used by payment module class for PayFast ITN payment method
+ * Functions used by payment module class for Payfast ITN payment method
  *
- * Copyright (c) 2023 PayFast (Pty) Ltd
- * You (being anyone who is not PayFast (Pty) Ltd) may download and use this plugin / code in your own website in
- * conjunction with a registered and active PayFast account. If your PayFast account is terminated for any reason,
+ * Copyright (c) 2024 Payfast (Pty) Ltd
+ * You (being anyone who is not Payfast (Pty) Ltd) may download and use this plugin / code in your own website in
+ * conjunction with a registered and active Payfast account. If your Payfast account is terminated for any reason,
  * you may not use this plugin / code or part thereof.
  * Except as expressly indicated in this licence, you may not use, copy, modify or distribute this plugin / code or
  * part thereof in any way.
  */
+require_once __DIR__ . '/vendor/autoload.php';
+// phpcs:enable
+
+use Payfast\PayfastCommon\PayfastCommon;
 
 // Posting URLs
-define('MODULE_PAYMENT_PAYFAST_SERVER_LIVE', 'www.payfast.co.za');
-define('MODULE_PAYMENT_PAYFAST_SERVER_TEST', 'sandbox.payfast.co.za');
+const MODULE_PAYMENT_PF_SERVER_LIVE = 'www.payfast.co.za';
+const MODULE_PAYMENT_PF_SERVER_TEST = 'sandbox.payfast.co.za';
 
 // Database tables
-define('TABLE_PAYFAST', DB_PREFIX . 'payfast');
-define('TABLE_PAYFAST_SESSION', DB_PREFIX . 'payfast_session');
-define('TABLE_PAYFAST_PAYMENT_STATUS', DB_PREFIX . 'payfast_payment_status');
-define('TABLE_PAYFAST_PAYMENT_STATUS_HISTORY', DB_PREFIX . 'payfast_payment_status_history');
-define('TABLE_PAYFAST_TESTING', DB_PREFIX . 'payfast_testing');
-const TABLE_ORDERS    = DB_PREFIX . 'orders';
-const TABLE_COUNTRIES = DB_PREFIX . 'countries';
+const TABLE_PAYFAST                        = DB_PREFIX . 'payfast';
+const TABLE_PAYFAST_SESSION                = DB_PREFIX . 'payfast_session';
+const TABLE_PAYFAST_PAYMENT_STATUS         = DB_PREFIX . 'payfast_payment_status';
+const TABLE_PAYFAST_PAYMENT_STATUS_HISTORY = DB_PREFIX . 'payfast_payment_status_history';
+const TABLE_PAYFAST_TESTING = DB_PREFIX . 'payfast_testing';
 
 // Formatting
-define('PF_FORMAT_DATETIME', 'Y-m-d H:i:s');
-define('PF_FORMAT_DATETIME_DB', 'Y-m-d H:i:s');
-define('PF_FORMAT_DATE', 'Y-m-d');
-define('PF_FORMAT_TIME', 'H:i');
-define('PF_FORMAT_TIMESTAMP', 'YmdHis');
+const PF_FORMAT_DATETIME    = 'Y-m-d H:i:s';
+const PF_FORMAT_DATETIME_DB = 'Y-m-d H:i:s';
+const PF_FORMAT_DATE      = 'Y-m-d';
+const PF_FORMAT_TIME      = 'H:i';
+const PF_FORMAT_TIMESTAMP = 'YmdHis';
 
 // General
-define('PF_SESSION_LIFE', 7);         // # of days session is saved for
-define('PF_SESSION_EXPIRE_PROB', 5);  // Probability (%) of deleting expired sessions
+const PF_SESSION_LIFE        = 7;         // # of days session is saved for
+const PF_SESSION_EXPIRE_PROB = 5;  // Probability (%) of deleting expired sessions
 
 /**
  * pf_createUUID
@@ -44,9 +46,9 @@ define('PF_SESSION_EXPIRE_PROB', 5);  // Probability (%) of deleting expired ses
  *
  * @see http://www.php.net/manual/en/function.uniqid.php#69164
  */
-function pf_createUUID()
+function pf_createUUID(): string
 {
-    $uuid = sprintf(
+    return sprintf(
         '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
         mt_rand(0, 0xffff),
         mt_rand(0, 0xffff),
@@ -57,8 +59,6 @@ function pf_createUUID()
         mt_rand(0, 0xffff),
         mt_rand(0, 0xffff)
     );
-
-    return ($uuid);
 }
 
 /**
@@ -67,38 +67,37 @@ function pf_createUUID()
  * This function gets the currently active table. If in testing mode, it
  * returns the test table, if in live, it returns the live table
  *
- * @param $msg String Message to log
- *
- * @author PayFast (Pty) Ltd
+ * @return string
+ * @author Payfast (Pty) Ltd
  */
-function pf_getActiveTable()
+function pf_getActiveTable(): string
 {
-    if (strcasecmp(MODULE_PAYMENT_PAYFAST_SERVER, 'Live') === 0) {
+    if (strcasecmp(MODULE_PAYMENT_PF_SERVER, 'Live') === 0) {
         $table = TABLE_PAYFAST;
     } else {
         $table = TABLE_PAYFAST_TESTING;
     }
 
-    return ($table);
+    return $table;
 }
 
 /**
  * pf_createOrderArray
  *
- * Creates the array used to create a PayFast order
+ * Creates the array used to create a Payfast order
  *
- * @param $pfData Array Array of posted PayFast data
- * @param $zcOrderId Integer Order ID for Zen Cart order
- * @param $timestamp Integer Unix timestamp to use for transaction
+ * @param $pfData Array|null Array of posted Payfast data
+ * @param $zcOrderId Integer|null Order ID for Zen Cart order
+ * @param $timestamp Integer|null Unix timestamp to use for transaction
  *
- * @author PayFast (Pty) Ltd
+ * @author Payfast (Pty) Ltd
  */
-function pf_createOrderArray($pfData = null, $zcOrderId = null, $timestamp = null)
+function pf_createOrderArray(array $pfData = null, int $zcOrderId = null, int $timestamp = null): array
 {
     // Variable initialization
     $ts = empty($timestamp) ? time() : $timestamp;
 
-    $sqlArray = array(
+    return array(
         'm_payment_id'  => $pfData['m_payment_id'],
         'pf_payment_id' => $pfData['pf_payment_id'],
         'zc_order_id'   => $zcOrderId,
@@ -111,8 +110,6 @@ function pf_createOrderArray($pfData = null, $zcOrderId = null, $timestamp = nul
         'status_date'   => date(PF_FORMAT_DATETIME_DB, $ts),
         'status_reason' => '',
     );
-
-    return ($sqlArray);
 }
 
 /**
@@ -120,15 +117,17 @@ function pf_createOrderArray($pfData = null, $zcOrderId = null, $timestamp = nul
  *
  * Determines the type of transaction which is occuring
  *
- * @param $pfData Array Array of posted PayFast data
+ * @param $pfData Array|null Array of posted Payfast data
  *
- * @author PayFast (Pty) Ltd
+ * @author Payfast (Pty) Ltd
  */
-function pf_lookupTransaction($pfData = null)
+function pf_lookupTransaction(array $pfData = null): array
 {
     // Variable initialization
     global $db;
     $data = array();
+
+    $payfastCommon = new PayfastCommon(true);
 
     $data = array(
         'pf_order_id' => '',
@@ -146,7 +145,7 @@ function pf_lookupTransaction($pfData = null)
 
     $exists = ($orderData->RecordCount() > 0);
 
-    pflog("Record count = " . $orderData->RecordCount());
+    $payfastCommon->pflog("Record count = " . $orderData->RecordCount());
 
     // If record found, extract the useful information
     if ($exists) {
@@ -154,27 +153,27 @@ function pf_lookupTransaction($pfData = null)
     }
 
 
-    pflog("Data:\n" . print_r($data, true));
+    $payfastCommon->pflog("Data:\n" . print_r($data, true));
 
     // New transaction (COMPLETE or PENDING)
     if (!$exists) {
         $data['txn_type'] = 'new';
-    } elseif ($exists && $pfData['payment_status'] == 'COMPLETE') {
+    } elseif ($pfData['payment_status'] == 'COMPLETE') {
         // Current transaction is PENDING and has now cleared
         $data['txn_type'] = 'cleared';
-    } elseif ($exists && $pfData['payment_status'] == 'PENDING') {
+    } elseif ($pfData['payment_status'] == 'PENDING') {
         // Current transaction is PENDING and is still PENDING
         $data['txn_type'] = 'update';
-    } elseif ($exists && $pfData['payment_status'] == 'FAILED') {
+    } elseif ($pfData['payment_status'] == 'FAILED') {
         // Current transaction is PENDING and has now failed
         $data['txn_type'] = 'failed';
     } else {
         $data['txn_type'] = 'unknown';
     }
 
-    pflog("Data to be returned:\n" . print_r(array_values($data), true));
+    $payfastCommon->pflog("Data to be returned:\n" . print_r(array_values($data), true));
 
-    return (array_values($data));
+    return array_values($data);
 }
 
 /**
@@ -182,48 +181,51 @@ function pf_lookupTransaction($pfData = null)
  *
  * Creats the array required for an order history update
  *
- * @param $pfData Array Array of posted PayFast data
- * @param $pfOrderId Integer Order ID for PayFast order
- * @param $timestamp Integer Unix timestamp to use for transaction
+ * @param $pfData Array|null Array of posted Payfast data
+ * @param $pfOrderId Integer|null Order ID for Payfast order
+ * @param $timestamp Integer|null Unix timestamp to use for transaction
  *
- * @author PayFast (Pty) Ltd
+ * @author Payfast (Pty) Ltd
  */
-function pf_createOrderHistoryArray($pfData = null, $pfOrderId = null, $timestamp = null)
+function pf_createOrderHistoryArray(array $pfData = null, int $pfOrderId = null, int $timestamp = null): array
 {
-    $sqlArray = array(
+    return array(
         'pf_order_id'   => $pfOrderId,
         'timestamp'     => date(PF_FORMAT_DATETIME_DB, $timestamp),
         'status'        => $pfData['payment_status'],
         'status_reason' => '',
     );
-
-    return ($sqlArray);
 }
 
 /**
  * pf_updateOrderStatusAndHistory
  *
  * Update the Zen Cart order status and history with new information supplied
- * from PayFast.
+ * from Payfast.
  *
- * @param $pfData Array Array of posted PayFast data
+ * @param $pfData Array Array of posted Payfast data
  * @param $zcOrderId Integer Order ID for ZenCart order
+ * @param $txnType
+ * @param $ts
+ * @param int $newStatus
  *
- * @author PayFast (Pty) Ltd
+ * @author Payfast (Pty) Ltd
  */
-function pf_updateOrderStatusAndHistory($pfData, $zcOrderId, $txnType, $ts, $newStatus = 1)
+function pf_updateOrderStatusAndHistory(array $pfData, int $zcOrderId, $txnType, $ts, int $newStatus = 1): void
 {
     // Variable initialization
     global $db;
 
+    $payfastCommon = new PayfastCommon(true);
+
     // Update ZenCart order table with new status
     $sql =
         "UPDATE `" . TABLE_ORDERS . "`
-        SET `orders_status` = '" . (int)$newStatus . "'
-        WHERE `orders_id` = '" . (int)$zcOrderId . "'";
+        SET `orders_status` = '" . $newStatus . "'
+        WHERE `orders_id` = '" . $zcOrderId . "'";
     $db->Execute($sql);
 
-    // Update PayFast order with new status
+    // Update Payfast order with new status
     $sqlArray = array(
         'status'      => $pfData['payment_status'],
         'status_date' => date(PF_FORMAT_DATETIME_DB, $ts),
@@ -235,13 +237,13 @@ function pf_updateOrderStatusAndHistory($pfData, $zcOrderId, $txnType, $ts, $new
         "zc_order_id='" . $zcOrderId . "'"
     );
 
-    // Create new PayFast order status history record
+    // Create new Payfast order status history record
     $sqlArray = array(
-        'orders_id'         => (int)$zcOrderId,
-        'orders_status_id'  => (int)$newStatus,
+        'orders_id'         => $zcOrderId,
+        'orders_status_id'  => $newStatus,
         'date_added'        => date(PF_FORMAT_DATETIME_DB, $ts),
         'customer_notified' => '0',
-        'comments'          => 'PayFast status: ' . $pfData['payment_status'],
+        'comments'          => 'Payfast status: ' . $pfData['payment_status'],
     );
     zen_db_perform(TABLE_ORDERS_STATUS_HISTORY, $sqlArray);
 
@@ -250,24 +252,29 @@ function pf_updateOrderStatusAndHistory($pfData, $zcOrderId, $txnType, $ts, $new
         $sql         =
             "SELECT `date_purchased`
             FROM `" . TABLE_ORDERS . "`
-            WHERE `orders_id` = " . (int)$zcOrderId;
+            WHERE `orders_id` = " . $zcOrderId;
         $checkStatus = $db->Execute($sql);
 
-        $purchaseDate = new DateTime($checkStatus->fields['date_purchased']);
+        try {
+            $purchaseDate = new DateTime($checkStatus->fields['date_purchased']);
+        } catch (Exception $exception) {
+            $payfastCommon->pflog('Exception: ' . $exception->getMessage());
+        }
+
         $now          = new DateTime();
         $diff         = $now->diff($purchaseDate, true);
         $zcMaxDays    = $diff->days + (int)DOWNLOAD_MAX_DAYS;
 
-        pflog(
-            'Updating order #' . (int)$zcOrderId . ' downloads. New max days: ' .
-            (int)$zcMaxDays . ', New count: ' . (int)DOWNLOAD_MAX_COUNT
+        $payfastCommon->pflog(
+            'Updating order #' . $zcOrderId . ' downloads. New max days: ' .
+            $zcMaxDays . ', New count: ' . (int)DOWNLOAD_MAX_COUNT
         );
 
         $sql =
             "UPDATE `" . TABLE_ORDERS_PRODUCTS_DOWNLOAD . "`
-            SET `download_maxdays` = " . (int)$zcMaxDays . ",
+            SET `download_maxdays` = " . $zcMaxDays . ",
                 `download_count` = " . (int)DOWNLOAD_MAX_COUNT . "
-            WHERE `orders_id` = " . (int)$zcOrderId;
+            WHERE `orders_id` = " . $zcOrderId;
         $db->Execute($sql);
     }
 }
@@ -275,7 +282,7 @@ function pf_updateOrderStatusAndHistory($pfData, $zcOrderId, $txnType, $ts, $new
 /**
  * pf_removeExpiredSessions
  *
- * Removes sessions from the PayFast session table which are passed their
+ * Removes sessions from the Payfast session table which are passed their
  * expiry date. Sessions will be left like this due to shopping cart
  * abandonment (ie. someone get's all the way to the order confirmation
  * page but fails to click "Confirm Order"). This will also happen when orders
@@ -284,18 +291,17 @@ function pf_updateOrderStatusAndHistory($pfData, $zcOrderId, $txnType, $ts, $new
  * Won't be run every time it is called, but according to a probability
  * setting to ensure a non-excessive use of resources
  *
- * @param $pfData Array Array of posted PayFast data
- * @param $zcOrderId Integer Order ID for ZenCart order
- *
- * @author PayFast (Pty) Ltd
+ * @author Payfast (Pty) Ltd
  */
-function pf_removeExpiredSessions()
+function pf_removeExpiredSessions(): void
 {
     // Variable initialization
     global $db;
     $prob = mt_rand(1, 100);
 
-    pflog(
+    $payfastCommon = new PayfastCommon(true);
+
+    $payfastCommon->pflog(
         'Generated probability = ' . $prob
         . ' (Expires for <= ' . PF_SESSION_EXPIRE_PROB . ')'
     );
@@ -309,7 +315,7 @@ function pf_removeExpiredSessions()
     }
 }
 
-function updateGuestOrder(int $orders_id, array $session)
+function updateGuestOrder(int $orders_id, array $session): void
 {
     global $db;
 

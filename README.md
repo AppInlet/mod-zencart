@@ -1,25 +1,44 @@
 # mod-zencart
 
-PayFast ZenCart Module v1.1.4 for Zen Cart 1.5.8
+## Payfast ZenCart Module v1.2.0 for Zen Cart 2.0.1
 
-Copyright (c) 2023 PayFast (Pty) Ltd
-You (being anyone who is not PayFast (Pty) Ltd) may download and use this plugin / code in your own website in conjunction with a registered and active PayFast account. If your PayFast account is terminated for any reason, you may not use this plugin / code or part thereof.
-Except as expressly indicated in this licence, you may not use, copy, modify or distribute this plugin / code or part thereof in any way.
+This is the Payfast module for Zencart. Please feel free
+to [contact the Payfast support team](https://payfast.io/contact/) should you require any assistance.
 
-INTEGRATION:
-1. Unzip the module to a temporary location on your computer
-2. Copy and paste the files into your Zen Cart installation as they were extracted. Take special note to upload the contents of the extracted admin folder to the folder matching your ZenCart admin url.
-- This should NOT overwrite any existing files or folders and merely supplement them with the PayFast files
-- This is however, dependent on the FTP program you use
-- If you are concerned about this, rather copy the individual files across as per instructions below
-3. Login to the Zen Cart admin console
-4. Using the main menu, navigate to Modules ? Payment
-5. Select the “PayFast” payment method by clicking on it
-6. Click the “Install” button on the right hand pane
-7. Change the value for “Enable PayFast” to “True”
-8. Scroll down to the bottom of the right hand pane and press the “Update” button
-9. The module is now operating in “test mode” and is ready to be tested with the Sandbox. To test with the sandbox, use the following login credentials when redirected to the PayFast site:
-- Username: sbtu01@payfast.co.za
-- Password: clientpass
+## Installation
 
-Please [click here](https://payfast.io/integration/shopping-carts/zen-cart/) for more information concerning this module.
+1. **Access Server Root**  
+   Navigate to the root directory of your Zen Cart installation on your server. You should see folders such as "includes," "images," and your admin folder (usually named with random letters).
+
+2. **Extract Module**  
+   Unzip the module files to a temporary location on your computer.
+
+3. **Upload Files**  
+   Upload the contents of the extracted module folder to your Zen Cart installation, matching the corresponding directories.
+      - Ensure no files are overwritten; the Payfast files should only supplement existing directories.
+      - This behavior may vary depending on your FTP program. If you're unsure, manually copy the files as outlined in the detailed instructions.
+
+4. **Login to Admin Console**  
+   Access your Zen Cart admin panel.
+
+5. **Navigate to Payment Modules**  
+   From the main menu, go to **Modules** → **Payment**.
+
+6. **Install Payfast Module**  
+   Select the "Payfast" payment method and click "Install" on the right-hand pane.
+
+7. **Enable Payfast**  
+   Set “Enable Payfast” to **True**.
+
+8. **Save Changes**  
+   Scroll to the bottom and click the “Update” button.
+
+9. **Test Mode**  
+   The module is now in test mode and ready for Sandbox testing.
+
+Please [click here](https://payfast.io/integration/plugins/zen-cart/) for more information concerning this
+module.
+
+## Collaboration
+
+Please submit pull requests with any tweaks, features or fixes you would like to share.
