@@ -5,7 +5,7 @@
  *
  * Functions used by payment module class for Payfast ITN payment method
  *
- * Copyright (c) 2024 Payfast (Pty) Ltd
+ * Copyright (c) 2025 Payfast (Pty) Ltd
  * You (being anyone who is not Payfast (Pty) Ltd) may download and use this plugin / code in your own website in
  * conjunction with a registered and active Payfast account. If your Payfast account is terminated for any reason,
  * you may not use this plugin / code or part thereof.
@@ -15,7 +15,7 @@
 require_once __DIR__ . '/vendor/autoload.php';
 // phpcs:enable
 
-use Payfast\PayfastCommon\PayfastCommon;
+use Payfast\PayfastCommon\Aggregator\Request\PaymentRequest;
 
 // Posting URLs
 const MODULE_PAYMENT_PF_SERVER_LIVE = 'www.payfast.co.za';
@@ -127,7 +127,7 @@ function pf_lookupTransaction(array $pfData = null): array
     global $db;
     $data = array();
 
-    $payfastCommon = new PayfastCommon(true);
+    $paymentRequest = new PaymentRequest(true);
 
     $data = array(
         'pf_order_id' => '',
@@ -145,7 +145,7 @@ function pf_lookupTransaction(array $pfData = null): array
 
     $exists = ($orderData->RecordCount() > 0);
 
-    $payfastCommon->pflog("Record count = " . $orderData->RecordCount());
+    $paymentRequest->pflog("Record count = " . $orderData->RecordCount());
 
     // If record found, extract the useful information
     if ($exists) {
@@ -153,7 +153,7 @@ function pf_lookupTransaction(array $pfData = null): array
     }
 
 
-    $payfastCommon->pflog("Data:\n" . print_r($data, true));
+    $paymentRequest->pflog("Data:\n" . print_r($data, true));
 
     // New transaction (COMPLETE or PENDING)
     if (!$exists) {
@@ -171,7 +171,7 @@ function pf_lookupTransaction(array $pfData = null): array
         $data['txn_type'] = 'unknown';
     }
 
-    $payfastCommon->pflog("Data to be returned:\n" . print_r(array_values($data), true));
+    $paymentRequest->pflog("Data to be returned:\n" . print_r(array_values($data), true));
 
     return array_values($data);
 }
@@ -216,7 +216,7 @@ function pf_updateOrderStatusAndHistory(array $pfData, int $zcOrderId, $txnType,
     // Variable initialization
     global $db;
 
-    $payfastCommon = new PayfastCommon(true);
+    $paymentRequest = new PaymentRequest(true);
 
     // Update ZenCart order table with new status
     $sql =
@@ -258,14 +258,14 @@ function pf_updateOrderStatusAndHistory(array $pfData, int $zcOrderId, $txnType,
         try {
             $purchaseDate = new DateTime($checkStatus->fields['date_purchased']);
         } catch (Exception $exception) {
-            $payfastCommon->pflog('Exception: ' . $exception->getMessage());
+            $paymentRequest->pflog('Exception: ' . $exception->getMessage());
         }
 
         $now          = new DateTime();
         $diff         = $now->diff($purchaseDate, true);
         $zcMaxDays    = $diff->days + (int)DOWNLOAD_MAX_DAYS;
 
-        $payfastCommon->pflog(
+        $paymentRequest->pflog(
             'Updating order #' . $zcOrderId . ' downloads. New max days: ' .
             $zcMaxDays . ', New count: ' . (int)DOWNLOAD_MAX_COUNT
         );
@@ -299,9 +299,9 @@ function pf_removeExpiredSessions(): void
     global $db;
     $prob = mt_rand(1, 100);
 
-    $payfastCommon = new PayfastCommon(true);
+    $paymentRequest = new PaymentRequest(true);
 
-    $payfastCommon->pflog(
+    $paymentRequest->pflog(
         'Generated probability = ' . $prob
         . ' (Expires for <= ' . PF_SESSION_EXPIRE_PROB . ')'
     );

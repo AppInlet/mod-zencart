@@ -1,6 +1,6 @@
 # mod-zencart
 
-## Payfast ZenCart Module v1.2.0 for Zen Cart 2.0.1
+## Payfast ZenCart Module v1.3.0 for Zen Cart 2.1.0
 
 This is the Payfast module for Zencart. Please feel free
 to [contact the Payfast support team](https://payfast.io/contact/) should you require any assistance.
