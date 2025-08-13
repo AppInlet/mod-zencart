@@ -27,7 +27,7 @@ use Composer\Semver\VersionParser;
 class InstalledVersions
 {
     /**
-     * @var array|null
+     * @var mixed[]|null
      * @psalm-var array{root: array{name: string, pretty_version: string, version: string, reference: string|null, type: string, install_path: string, aliases: string[], dev: bool}, versions: array<string, array{pretty_version?: string, version?: string, reference?: string|null, type?: string, install_path?: string, aliases?: string[], dev_requirement: bool, replaced?: string[], provided?: string[]}>}|array{}|null
      */
     private static $installed;
@@ -235,7 +235,7 @@ class InstalledVersions
                 continue;
             }
 
-            return $installed['versions'][$packageName]['install_path'] ?? null;
+            return isset($installed['versions'][$packageName]['install_path']) ? $installed['versions'][$packageName]['install_path'] : null;
         }
 
         throw new \OutOfBoundsException('Package "' . $packageName . '" is not installed');

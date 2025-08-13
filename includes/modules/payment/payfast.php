@@ -6,7 +6,7 @@
  * Main module file which is responsible for installing, editing and deleting
  * module details from DB and sending data to Payfast.
  *
- * Copyright (c) 2024 Payfast (Pty) Ltd
+ * Copyright (c) 2025 Payfast (Pty) Ltd
  * You (being anyone who is not Payfast (Pty) Ltd) may download and use this plugin / code in your own website in
  * conjunction with a registered and active Payfast account. If your Payfast account is terminated for any reason,
  * you may not use this plugin / code or part thereof.
@@ -26,10 +26,10 @@ require_once __DIR__ . '/payfast/vendor/autoload.php';
 require_once __DIR__ . '/payfast/payfastinstaller.php';
 // phpcs:enable
 
-use Payfast\PayfastCommon\PayfastCommon;
+use Payfast\PayfastCommon\Aggregator\Request\PaymentRequest;
 
 const PF_MODULE_NAME = 'Payfast_ZenCart';
-const PF_MODULE_VER = '1.2.0';
+const PF_MODULE_VER = '1.3.0';
 
 /**
  * payfast
@@ -288,7 +288,7 @@ class payfast extends base
         global $db, $order, $currencies, $currency;
         $buttonArray = [];
 
-        $payfastCommon = new PayfastCommon(true);
+        $paymentRequest = new PaymentRequest(true);
 
         $merchantId  = MODULE_PAYMENT_PF_MERCHANT_ID;
         $merchantKey = MODULE_PAYMENT_PF_MERCHANT_KEY;
@@ -399,7 +399,7 @@ class payfast extends base
         }
 
         $data['signature'] = md5($pfOutput);
-        $payfastCommon->pflog("Data to send:\n" . print_r($data, true));
+        $paymentRequest->pflog("Data to send:\n" . print_r($data, true));
 
 
         //// Check the data and create the process button array
@@ -427,9 +427,9 @@ class payfast extends base
     public function before_process(): void
     {
         $pre = __METHOD__ . ' : ';
-        $payfastCommon = new PayfastCommon(true);
+        $paymentRequest = new PaymentRequest(true);
 
-        $payfastCommon->pflog($pre . 'bof');
+        $paymentRequest->pflog($pre . 'bof');
 
         // Variable initialization
         global $db, $order_total_modules, $insert_id;
@@ -502,9 +502,9 @@ class payfast extends base
     public function after_process(): bool
     {
         $pre = __METHOD__ . ' : ';
-        $payfastCommon = new PayfastCommon(true);
+        $paymentRequest = new PaymentRequest(true);
 
-        $payfastCommon->pflog($pre . 'bof');
+        $paymentRequest->pflog($pre . 'bof');
 
         $this->notify('NOTIFY_HEADER_START_CHECKOUT_PROCESS');
 
@@ -626,9 +626,9 @@ class payfast extends base
     public function after_order_create($insert_id): bool
     {
         $pre = __METHOD__ . ' : ';
-        $payfastCommon = new PayfastCommon(true);
+        $paymentRequest = new PaymentRequest(true);
 
-        $payfastCommon->pflog($pre . 'bof');
+        $paymentRequest->pflog($pre . 'bof');
 
         return false;
     }
