@@ -29,7 +29,7 @@ require_once __DIR__ . '/payfast/payfastinstaller.php';
 use Payfast\PayfastCommon\Aggregator\Request\PaymentRequest;
 
 const PF_MODULE_NAME = 'Payfast_ZenCart';
-const PF_MODULE_VER = '1.3.0';
+const PF_MODULE_VER = '1.4.0';
 
 /**
  * payfast
@@ -100,7 +100,7 @@ class payfast extends base
         $this->sort_order = 0;
 
         if (IS_ADMIN_FLAG === true) {
-            $this->title = 'Payfast';
+            $this->title = 'Payfast Aggregation';
             if (defined('MODULE_PAYMENT_PF_SERVER')) {
                 $this->title .= $this->getTestModeAlert();
             } else {
@@ -312,7 +312,15 @@ class payfast extends base
             $price    = round($product['final_price'] * (100 + $product['tax']) / 100, 2);
             $priceStr = number_format($price, $currencyDecPlaces);
 
-            $orderDescription .= $product['qty'] . ' x ' . $product['name'];
+            $productName = html_entity_decode(
+                strip_tags($product['name']),
+                ENT_QUOTES,
+                'UTF-8'
+            );
+
+            $productName = preg_replace('/\s+/', ' ', $productName);
+            $productName = trim($productName);
+            $orderDescription .= $product['qty'] . ' x ' . $productName;
 
             if ($product['qty'] > 1) {
                 $linePrice    = $price * $product['qty'];

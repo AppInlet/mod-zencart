@@ -15,12 +15,12 @@
 
 const MODULE_PAYMENT_PF_TEXT_ADMIN_TITLE   = 'Payfast';
 const MODULE_PAYMENT_PF_TEXT_CATALOG_TITLE = 'Payfast';
-const MODULE_PAYMENT_PF_BUTTON_IMG = DIR_WS_IMAGES . 'payfast/payfast.svg';
+const MODULE_PAYMENT_PF_BUTTON_IMG = DIR_WS_IMAGES . 'payfast/payfast-logo.svg';
 
 if (IS_ADMIN_FLAG === true) {
     define(
         'MODULE_PAYMENT_PF_TEXT_DESCRIPTION',
-        '<img src="../' . MODULE_PAYMENT_PF_BUTTON_IMG . '" style="height:5rem;"> <br>' .
+        '<img src="../' . MODULE_PAYMENT_PF_BUTTON_IMG . '" style="height:36px;"> <br>' .
         '<br />' .
         'Manage your ' .
         '<a href="https://my.payfast.co.za/login" target="_blank">Payfast account</a> or ' .
@@ -38,7 +38,7 @@ const MODULE_PAYMENT_PF_TEXT_CATALOG_LOGO = '<a href="https://payfast.io/" style
                                             ' alt="' . MODULE_PAYMENT_PF_BUTTON_ALT . '"' .
                                             ' title="' . MODULE_PAYMENT_PF_BUTTON_ALT . '"' .
                                             ' style="vertical-align: text-bottom; border: 0px;
-                                            width: 10vw; margin-bottom: -1vw; margin-left: -1vw;" border="0"/></a>&nbsp;' .
+                                             height: 36px; margin-bottom: -1vw;"/></a>&nbsp;' .
                                             '<span class="smallText">' . MODULE_PAYMENT_PF_ACCEPTANCE_MARK_TEXT . '</span>';
 
 const MODULE_PAYMENT_PF_ENTRY_FIRST_NAME      = 'First Name:';
