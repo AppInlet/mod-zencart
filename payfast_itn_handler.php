@@ -21,6 +21,11 @@ require_once 'includes/configure.php';
 require_once 'includes/defined_paths.php';
 require_once 'includes/modules/payment/payfast/payfast_functions.php';
 require_once 'includes/application_top.php';
+
+if (!defined('TOPMOST_CATEGORY_PARENT_ID')) {
+    define('TOPMOST_CATEGORY_PARENT_ID', 0);
+}
+
 require_once DIR_WS_CLASSES . 'payment.php';
 require_once 'includes/modules/payment/payfast/vendor/autoload.php';
 require_once 'includes/classes/PayfastConfig.php';
@@ -31,7 +36,7 @@ require_once 'includes/classes/ZenCartOrderManager.php';
 if (!defined('PF_SOFTWARE_NAME')) define('PF_SOFTWARE_NAME', 'ZenCart');
 if (!defined('PF_SOFTWARE_VER')) define('PF_SOFTWARE_VER', PROJECT_VERSION_MAJOR . '.' . PROJECT_VERSION_MINOR);
 if (!defined('PF_MODULE_NAME')) define('PF_MODULE_NAME', 'Payfast_ZenCart');
-if (!defined('PF_MODULE_VER')) define('PF_MODULE_VER', '1.3.0');
+if (!defined('PF_MODULE_VER')) define('PF_MODULE_VER', '1.4.0');
 if (!defined('MODULE_PAYMENT_PF_SERVER_LIVE')) define('MODULE_PAYMENT_PF_SERVER_LIVE', 'payfast.co.za');
 if (!defined('MODULE_PAYMENT_PF_SERVER_TEST')) define('MODULE_PAYMENT_PF_SERVER_TEST', 'sandbox.payfast.co.za');
 if (!defined('PF_DEBUG')) define('PF_DEBUG', true);
