@@ -23,8 +23,8 @@ if (IS_ADMIN_FLAG === true) {
         '<img src="../' . MODULE_PAYMENT_PF_BUTTON_IMG . '" style="height:36px;"> <br>' .
         '<br />' .
         'Manage your ' .
-        '<a href="https://my.payfast.co.za/login" target="_blank">Payfast account</a> or ' .
-        '<a href="https://www.payfast.co.za/registration" target="_blank"> register</a> for a Payfast account'
+        '<a href="https://my.payfast.io/login" target="_blank">Payfast account</a> or ' .
+        '<a href="https://payfast.io" target="_blank"> register</a> for a Payfast account'
     );
 } else {
     define('MODULE_PAYMENT_PF_TEXT_DESCRIPTION', '<strong>Payfast</strong>');
@@ -33,12 +33,11 @@ if (IS_ADMIN_FLAG === true) {
 const MODULE_PAYMENT_PF_BUTTON_ALT           = 'Checkout with Payfast';
 const MODULE_PAYMENT_PF_ACCEPTANCE_MARK_TEXT = '';
 
-const MODULE_PAYMENT_PF_TEXT_CATALOG_LOGO = '<a href="https://payfast.io/" style="border: 0;" target="_blank">' .
-                                            '<img src="' . MODULE_PAYMENT_PF_BUTTON_IMG . '"' .
+const MODULE_PAYMENT_PF_TEXT_CATALOG_LOGO = '<img src="' . MODULE_PAYMENT_PF_BUTTON_IMG . '"' .
                                             ' alt="' . MODULE_PAYMENT_PF_BUTTON_ALT . '"' .
                                             ' title="' . MODULE_PAYMENT_PF_BUTTON_ALT . '"' .
                                             ' style="vertical-align: text-bottom; border: 0px;
-                                             height: 36px; margin-bottom: -1vw;"/></a>&nbsp;' .
+                                             height: 36px; margin-bottom: -1vw;"/>&nbsp;' .
                                             '<span class="smallText">' . MODULE_PAYMENT_PF_ACCEPTANCE_MARK_TEXT . '</span>';
 
 const MODULE_PAYMENT_PF_ENTRY_FIRST_NAME      = 'First Name:';
